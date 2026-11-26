@@ -36,6 +36,8 @@ function lista(nombre) {
 module.exports = {
   PORT: process.env.PORT || 3001,
   MONGODB_URI: requerida('MONGODB_URI'),
+  JWT_SECRET: requerida('JWT_SECRET'),
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   DNS_SERVERS: lista('DNS_SERVERS'),
   // Sin barra final: el navegador envía el origen como "https://sitio.vercel.app".
   CORS_ORIGINS: lista('CORS_ORIGINS').map((origen) => origen.replace(/\/+$/, '')),

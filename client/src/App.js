@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import './App.css';
+import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import ContactPage from './pages/ContactPage';
 import AdminPage from './pages/AdminPage';
 import ProductFormPage from './pages/ProductFormPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
-/** Vuelve al principio de la página cada vez que cambia la ruta. */
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -22,11 +26,9 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
-  // Cada ítem del carrito: { product, quantity }
+function AppShell() {
   const [cartItems, setCartItems] = useState([]);
 
-  /** Suma una unidad. No supera el stock del producto, si lo tiene definido. */
   function addToCart(product) {
     setCartItems((items) => {
       const item = items.find((current) => current.product._id === product._id);
@@ -36,7 +38,6 @@ function App() {
     });
   }
 
-  /** Resta una unidad. Si llega a 0, el producto sale del carrito. */
   function removeFromCart(productId) {
     setCartItems((items) =>
       items
@@ -62,16 +63,55 @@ function App() {
           <Route path="/productos" element={<CatalogPage cart={cart} />} />
           <Route path="/productos/:id" element={<ProductDetailPage cart={cart} />} />
           <Route path="/contacto" element={<ContactPage />} />
-          {/* Vistas de administración: sin autenticación en esta etapa (ver docs/sprints/sprint_5_6.md) */}
-          <Route path="/admin" element={<AdminPage />} />
-          {/* key: crear y editar usan el mismo componente; la key evita que se comparta el estado entre ambas */}
-          <Route path="/admin/crear-producto" element={<ProductFormPage key="crear" />} />
-          <Route path="/admin/editar-producto/:id" element={<ProductFormPage key="editar" />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
+
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/crear-producto"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <ProductFormPage key="crear" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/editar-producto/:id"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <ProductFormPage key="editar" />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
       <Footer />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 

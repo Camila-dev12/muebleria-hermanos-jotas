@@ -2,7 +2,7 @@
 
 Este documento define la interfaz de comunicación entre el frontend (React) y el backend (Express) para la Mueblería Hermanos Jota.
 
-> **Vigente desde el Sprint 5-6** (persistencia en MongoDB). Ver la sección [Migración desde el Sprint 3-4](#migración-desde-el-sprint-3-4) para los cambios respecto de la versión anterior.
+> **Vigente desde el Sprint 5-6** (persistencia en MongoDB) y ampliado en el **Sprint 7-8** con autenticación JWT y roles. Ver la sección [Migración desde el Sprint 3-4](#migración-desde-el-sprint-3-4) para los cambios respecto de la versión anterior.
 
 ---
 
@@ -10,6 +10,7 @@ Este documento define la interfaz de comunicación entre el frontend (React) y e
 
 - **Respuestas exitosas:** el contenido viaja siempre dentro de la propiedad `data`.
 - **Cuerpo de las peticiones:** `POST` y `PUT` envían un objeto JSON con el header `Content-Type: application/json`. Si el cuerpo falta, no es un objeto (por ejemplo, un array) o es un JSON mal formado, la API responde `400`.
+- **Autenticación:** las rutas protegidas requieren el header `Authorization: Bearer <token>`. Si falta el token o es inválido/expirado, la API responde `401`. Si el usuario no tiene el rol requerido (ej. `admin`), responde `403`.
 - **Respuestas de error:** todas usan el mismo formato:
   ```json
   {
@@ -123,10 +124,11 @@ Busca y devuelve la información de un producto único mediante su `_id`.
 ---
 
 ## 3. Crear un producto
-Crea un producto nuevo en la base de datos.
+Crea un producto nuevo en la base de datos. **Requiere autenticación con rol `admin`.**
 
 - **Método HTTP:** `POST`
 - **Ruta:** `/api/productos`
+- **Headers:** `Authorization: Bearer <token>`
 - **Cuerpo:** un objeto `Producto` sin `_id`. Solo `nombre` y `precio` son obligatorios.
   ```json
   {
@@ -149,10 +151,11 @@ Crea un producto nuevo en la base de datos.
 ---
 
 ## 4. Actualizar un producto
-Modifica un producto existente.
+Modifica un producto existente. **Requiere autenticación con rol `admin`.**
 
 - **Método HTTP:** `PUT`
 - **Ruta:** `/api/productos/:id`
+- **Headers:** `Authorization: Bearer <token>`
 - **Cuerpo:** los campos a modificar. Los campos que no se envían conservan su valor actual. Se aplican las mismas validaciones que al crear.
   ```json
   { "precio": 19500, "stock": 0 }
@@ -168,15 +171,66 @@ Modifica un producto existente.
 ---
 
 ## 5. Eliminar un producto
-Borra un producto de la base de datos.
+Borra un producto de la base de datos. **Requiere autenticación con rol `admin`.**
 
 - **Método HTTP:** `DELETE`
 - **Ruta:** `/api/productos/:id`
+- **Headers:** `Authorization: Bearer <token>`
 - **Respuesta de Éxito (200 OK):** el producto eliminado.
   ```json
   { "data": { "_id": "665f1c2e8b3a4d0012345678", "nombre": "Sofá Patagonia", "...": "..." } }
   ```
 - **Errores:** `400` y `404` (ver [errores comunes](#errores-comunes-a-las-rutas-con-id)).
+
+---
+
+## 6. Autenticación (`/api/auth`)
+
+### Modelo `Usuario`
+
+| Campo      | Tipo     | Requerido | Notas                                                                 |
+|------------|----------|-----------|-----------------------------------------------------------------------|
+| `_id`      | `String` | —         | ObjectId generado por MongoDB.                                        |
+| `nombre`   | `String` | Sí        | Mínimo 2 caracteres.                                                  |
+| `email`    | `String` | Sí        | Único, normalizado en minúsculas.                                     |
+| `rol`      | `String` | —         | `'cliente'` (por defecto) o `'admin'`. No se expone la contraseña.    |
+
+### 6.1 Registro de usuario
+- **Método HTTP:** `POST`
+- **Ruta:** `/api/auth/registro`
+- **Cuerpo:** `{ "nombre": "Ana Pérez", "email": "ana@ejemplo.com", "password": "secreto123" }` (mínimo 6 caracteres para `password`).
+- **Respuesta de Éxito (201 Created):**
+  ```json
+  {
+    "data": {
+      "token": "<jwt>",
+      "user": { "_id": "...", "nombre": "Ana Pérez", "email": "ana@ejemplo.com", "rol": "cliente" }
+    }
+  }
+  ```
+- **Errores:** `400` (campos faltantes/inválidos), `409` (`El email ya está registrado`).
+
+### 6.2 Login de usuario
+- **Método HTTP:** `POST`
+- **Ruta:** `/api/auth/login`
+- **Cuerpo:** `{ "email": "ana@ejemplo.com", "password": "secreto123" }`
+- **Respuesta de Éxito (200 OK):**
+  ```json
+  {
+    "data": {
+      "token": "<jwt>",
+      "user": { "_id": "...", "nombre": "Ana Pérez", "email": "ana@ejemplo.com", "rol": "cliente" }
+    }
+  }
+  ```
+- **Errores:** `400` (faltan credenciales), `401` (`Credenciales inválidas`).
+
+### 6.3 Obtener perfil del usuario autenticado
+- **Método HTTP:** `GET`
+- **Ruta:** `/api/auth/perfil`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuesta de Éxito (200 OK):** `{ "data": { "_id": "...", "nombre": "Ana Pérez", "email": "ana@ejemplo.com", "rol": "cliente" } }`
+- **Errores:** `401` (sin token o token inválido/expirado).
 
 ---
 
