@@ -43,6 +43,12 @@ function errorHandler(err, req, res, next) {
     return next(err);
   }
 
+  if (err.code === 11000) {
+    return res.status(409).json({
+      error: { status: 409, message: 'El email ya está registrado' },
+    });
+  }
+
   const mensajeInvalido = mensajeDeDatosInvalidos(err);
   if (mensajeInvalido) {
     return res.status(400).json({

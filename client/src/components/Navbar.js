@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-const LINKS = [
+const PUBLIC_LINKS = [
   { to: '/', label: 'Inicio', end: true },
   { to: '/productos', label: 'Productos' },
   { to: '/contacto', label: 'Contacto' },
-  // Sin `end`: queda activo también en /admin/crear-producto y /admin/editar-producto/:id
-  { to: '/admin', label: 'Administración' },
 ];
 
 function Navbar({ cartCount = 0 }) {
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const searchTerm = searchParams.get('q') || '';
+
+  const navLinks = isAdmin
+    ? [...PUBLIC_LINKS, { to: '/admin', label: 'Administración' }]
+    : PUBLIC_LINKS;
 
   function toggleMenu() {
     setMenuOpen((isOpen) => !isOpen);
@@ -28,6 +32,12 @@ function Navbar({ cartCount = 0 }) {
     const term = event.currentTarget.elements.busqueda.value.trim();
     closeMenu();
     navigate(term ? `/productos?q=${encodeURIComponent(term)}` : '/productos');
+  }
+
+  function handleLogout() {
+    closeMenu();
+    logout();
+    navigate('/', { replace: true });
   }
 
   return (
@@ -46,7 +56,7 @@ function Navbar({ cartCount = 0 }) {
           className={`navbar__navigation${menuOpen ? ' navbar__navigation--open' : ''}`}
           aria-label="Navegación principal"
         >
-          {LINKS.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -74,6 +84,40 @@ function Navbar({ cartCount = 0 }) {
               defaultValue={searchTerm}
             />
           </form>
+
+          <div className="navbar__auth">
+            {isAuthenticated ? (
+              <>
+                <NavLink
+                  to="/perfil"
+                  className={({ isActive }) => (isActive ? 'navbar__link--active' : '')}
+                  onClick={closeMenu}
+                >
+                  {user?.nombre}
+                </NavLink>
+                <button type="button" className="link-button" onClick={handleLogout}>
+                  Salir
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) => (isActive ? 'navbar__link--active' : '')}
+                  onClick={closeMenu}
+                >
+                  Ingresar
+                </NavLink>
+                <NavLink
+                  to="/registro"
+                  className={({ isActive }) => (isActive ? 'navbar__link--active' : '')}
+                  onClick={closeMenu}
+                >
+                  Registrarse
+                </NavLink>
+              </>
+            )}
+          </div>
         </nav>
 
         <div className="navbar__actions">

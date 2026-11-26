@@ -55,7 +55,27 @@ function sentBody(method) {
   return JSON.parse(call[1].body);
 }
 
+const ADMIN_USER = {
+  _id: '665f1c2e8b3a4d0012345601',
+  nombre: 'Admin Jota',
+  email: 'admin@hermanosjota.com',
+  rol: 'admin',
+};
+
+const CLIENT_USER = {
+  _id: '665f1c2e8b3a4d0012345602',
+  nombre: 'Ana Pérez',
+  email: 'ana@ejemplo.com',
+  rol: 'cliente',
+};
+
+function loginAs(user = ADMIN_USER) {
+  localStorage.setItem('mhj_auth_token', 'fake-jwt-token');
+  return { 'GET /api/auth/perfil': () => jsonResponse(200, { data: user }) };
+}
+
 beforeEach(() => {
+  localStorage.clear();
   window.scrollTo = jest.fn();
   mockApi();
 });
@@ -107,6 +127,7 @@ test('un producto inexistente muestra un mensaje de error', async () => {
 });
 
 test('administración lista todos los productos con sus acciones', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin');
 
   const sofaRow = (await screen.findByRole('rowheader', { name: 'Sofá Patagonia' })).closest('tr');
@@ -118,6 +139,7 @@ test('administración lista todos los productos con sus acciones', async () => {
 });
 
 test('administración permite filtrar por nombre o categoría', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin');
 
   await userEvent.type(await screen.findByLabelText('Filtrar productos'), 'comedor');
@@ -128,7 +150,10 @@ test('administración permite filtrar por nombre o categoría', async () => {
 
 test('eliminar desde administración pide confirmación, llama a DELETE y saca la fila', async () => {
   window.confirm = jest.fn(() => true);
-  mockApi({ [`DELETE /api/productos/${SOFA._id}`]: () => jsonResponse(200, { data: SOFA }) });
+  mockApi({
+    ...loginAs(ADMIN_USER),
+    [`DELETE /api/productos/${SOFA._id}`]: () => jsonResponse(200, { data: SOFA }),
+  });
   renderAt('/admin');
 
   await userEvent.click(await screen.findByRole('button', { name: 'Eliminar Sofá Patagonia' }));
@@ -142,6 +167,7 @@ test('eliminar desde administración pide confirmación, llama a DELETE y saca l
 
 test('si se cancela la confirmación, no se elimina nada', async () => {
   window.confirm = jest.fn(() => false);
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin');
 
   await userEvent.click(await screen.findByRole('button', { name: 'Eliminar Sofá Patagonia' }));
@@ -153,6 +179,7 @@ test('si se cancela la confirmación, no se elimina nada', async () => {
 test('si la API falla al eliminar, se muestra el error y la fila se mantiene', async () => {
   window.confirm = jest.fn(() => true);
   mockApi({
+    ...loginAs(ADMIN_USER),
     [`DELETE /api/productos/${SOFA._id}`]: () => jsonResponse(500, { error: { status: 500, message: 'Error interno del servidor' } }),
   });
   renderAt('/admin');
@@ -164,9 +191,10 @@ test('si la API falla al eliminar, se muestra el error y la fila se mantiene', a
 });
 
 test('el formulario de alta valida los campos obligatorios sin llamar a la API', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin/crear-producto');
 
-  await userEvent.click(screen.getByRole('button', { name: 'Crear producto' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Crear producto' }));
 
   expect(screen.getByText('El nombre es obligatorio.')).toBeInTheDocument();
   expect(screen.getByText('El precio es obligatorio.')).toBeInTheDocument();
@@ -175,10 +203,13 @@ test('el formulario de alta valida los campos obligatorios sin llamar a la API',
 
 test('crear un producto envía POST con los datos y vuelve a administración con un mensaje', async () => {
   const nuevo = { _id: '665f1c2e8b3a4d00123456aa', nombre: 'Banco Delta', precio: 9900, stock: 2 };
-  mockApi({ 'POST /api/productos': () => jsonResponse(201, { data: nuevo }) });
+  mockApi({
+    ...loginAs(ADMIN_USER),
+    'POST /api/productos': () => jsonResponse(201, { data: nuevo }),
+  });
   renderAt('/admin/crear-producto');
 
-  await userEvent.type(screen.getByLabelText(/^Nombre/), '  Banco Delta ');
+  await userEvent.type(await screen.findByLabelText(/^Nombre/), '  Banco Delta ');
   await userEvent.type(screen.getByLabelText(/^Precio/), '9900');
   await userEvent.type(screen.getByLabelText(/^Stock/), '2');
   await userEvent.type(screen.getByLabelText(/^Colores/), 'Roble, Negro');
@@ -197,11 +228,12 @@ test('crear un producto envía POST con los datos y vuelve a administración con
 
 test('si la API rechaza el alta, se muestra su mensaje de error', async () => {
   mockApi({
+    ...loginAs(ADMIN_USER),
     'POST /api/productos': () => jsonResponse(400, { error: { status: 400, message: "El campo 'precio' no puede ser negativo" } }),
   });
   renderAt('/admin/crear-producto');
 
-  await userEvent.type(screen.getByLabelText(/^Nombre/), 'Banco');
+  await userEvent.type(await screen.findByLabelText(/^Nombre/), 'Banco');
   await userEvent.type(screen.getByLabelText(/^Precio/), '10');
   await userEvent.click(screen.getByRole('button', { name: 'Crear producto' }));
 
@@ -209,7 +241,10 @@ test('si la API rechaza el alta, se muestra su mensaje de error', async () => {
 });
 
 test('editar carga los datos del producto y envía PUT con los cambios', async () => {
-  mockApi({ [`PUT /api/productos/${SOFA._id}`]: () => jsonResponse(200, { data: { ...SOFA, precio: 45000 } }) });
+  mockApi({
+    ...loginAs(ADMIN_USER),
+    [`PUT /api/productos/${SOFA._id}`]: () => jsonResponse(200, { data: { ...SOFA, precio: 45000 } }),
+  });
   renderAt(`/admin/editar-producto/${SOFA._id}`);
 
   const precio = await screen.findByLabelText(/^Precio/);
@@ -230,9 +265,10 @@ test('editar carga los datos del producto y envía PUT con los cambios', async (
 });
 
 test('el stock del formulario solo acepta dígitos', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin/crear-producto');
 
-  await userEvent.type(screen.getByLabelText(/^Stock/), '12abc-3.5e');
+  await userEvent.type(await screen.findByLabelText(/^Stock/), '12abc-3.5e');
 
   expect(screen.getByLabelText(/^Stock/)).toHaveValue('1235');
 });
@@ -307,17 +343,46 @@ test('una ruta desconocida muestra la página 404', () => {
   expect(screen.getByRole('heading', { name: 'Esta página no existe' })).toBeInTheDocument();
 });
 
-test('el navbar tiene el acceso a administración', async () => {
+test('el navbar muestra el acceso a administración solo para usuarios admin', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/');
 
   const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
-  expect(within(nav).getByRole('link', { name: 'Administración' })).toHaveAttribute('href', '/admin');
-  await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+  expect(await within(nav).findByRole('link', { name: 'Administración' })).toHaveAttribute('href', '/admin');
 });
 
-test('el link de administración queda activo dentro del formulario', () => {
+test('el link de administración queda activo dentro del formulario', async () => {
+  mockApi({ ...loginAs(ADMIN_USER) });
   renderAt('/admin/crear-producto');
 
   const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
-  expect(within(nav).getByRole('link', { name: 'Administración' })).toHaveClass('navbar__link--active');
+  expect(await within(nav).findByRole('link', { name: 'Administración' })).toHaveClass('navbar__link--active');
+});
+
+test('un visitante sin sesión es redirigido a login al intentar entrar a rutas protegidas', () => {
+  renderAt('/perfil');
+
+  expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+});
+
+test('un usuario con rol cliente no puede acceder a administración', async () => {
+  mockApi({ ...loginAs(CLIENT_USER) });
+  renderAt('/admin');
+
+  expect(await screen.findByRole('heading', { name: 'Acceso restringido' })).toBeInTheDocument();
+});
+
+test('iniciar sesión actualiza el navbar con el perfil del usuario', async () => {
+  mockApi({
+    'POST /api/auth/login': () => jsonResponse(200, { data: { token: 'nuevo-jwt', user: CLIENT_USER } }),
+    'GET /api/auth/perfil': () => jsonResponse(200, { data: CLIENT_USER }),
+  });
+  renderAt('/login');
+
+  await userEvent.type(screen.getByLabelText('Email'), 'ana@ejemplo.com');
+  await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto123');
+  await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+  const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+  expect(await within(nav).findByRole('link', { name: 'Ana Pérez' })).toHaveAttribute('href', '/perfil');
 });

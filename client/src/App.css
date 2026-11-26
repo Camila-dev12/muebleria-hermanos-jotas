@@ -1446,3 +1446,70 @@ a.link-button {
     transition: none !important;
   }
 }
+
+.navbar__auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(160, 82, 45, 0.2);
+}
+
+.auth-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.auth-card {
+  background: #ffffff;
+  border: 1px solid rgba(160, 82, 45, 0.14);
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: 0 12px 28px rgba(44, 30, 22, 0.06);
+}
+
+.auth-card h1 {
+  margin: 0 0 0.5rem;
+}
+
+.auth-card__subtitle {
+  margin: 0 0 1.5rem;
+  color: rgba(44, 30, 22, 0.75);
+}
+
+.auth-card__footer {
+  margin: 1.5rem 0 0;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.auth-card__footer a {
+  color: var(--color-siena);
+  font-weight: 600;
+}
+
+.profile-details {
+  margin: 1.5rem 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-details dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(44, 30, 22, 0.6);
+}
+
+.profile-details dd {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
